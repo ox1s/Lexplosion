@@ -57,7 +57,9 @@
                     <!--  Password Field  -->
                     <controls:BindablePasswordBox
                         Margin="0,8,0,0"
+                        Height="46"
                         FontSize="14"
+                        Placeholder="Password"
                         Password="{Binding Model.Password, UpdateSourceTrigger=PropertyChanged}" />
 
                     <Grid Margin="0,8,0,0" ShowGridLines="False">
