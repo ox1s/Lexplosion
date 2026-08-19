@@ -76,6 +76,9 @@
     <s:String x:Key="PriorityConnetionMethod">Пріоритетний метод підключення</s:String>
     <s:String x:Key="DirectConnection">Пряме</s:String>
     <s:String x:Key="ViaRepeater">Через ретранслятор</s:String>
+    <s:String x:Key="WorldsDisplayMethod">Спосіб відображення світів</s:String>
+    <s:String x:Key="BroadcastWorldsDisplay">Широкомовна розсилка</s:String>
+    <s:String x:Key="ServersListWorldsDisplay">Додавання до списку серверів</s:String>
     <s:String x:Key="ConnectedPlayers">Підключені гравці</s:String>
     <s:String x:Key="NoConnectedPlayers">Підключені гравці відсутні</s:String>
     <s:String x:Key="ReloadMultiplayer">Перезавантажити мережеву гру</s:String>

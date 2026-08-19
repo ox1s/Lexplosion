@@ -62,6 +62,19 @@ namespace Lexplosion.UI.WPF.Mvvm.Models.MainContent.MainMenu
             }
         }
 
+        /// <summary>
+        /// Миры друзей отображаются добавлением в список серверов, а не широковещательной рассылкой.
+        /// </summary>
+        public bool IsWorldsViaServersList
+        {
+            get => GlobalData.GeneralSettings.NetworkWorldsViaServersList; set
+            {
+                GlobalData.GeneralSettings.NetworkWorldsViaServersList = value;
+                OnPropertyChanged();
+                Runtime.ServicesContainer.DataFilesService.SaveSettings(GlobalData.GeneralSettings);
+            }
+        }
+
 
         #endregion Properties
 

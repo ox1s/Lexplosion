@@ -605,7 +605,7 @@ namespace Lexplosion.Logic.Management
 				lock (loocker)
 				{
 					var serverData = new ControlServerData(LaunсherSettings.ServerIp, true);
-					_gameGateway = new OnlineGameGateway(_activeAccount.UUID, _activeAccount.SessionToken, _services.WebService, serverData, _generalSettings.NetworkDirectConnection);
+					_gameGateway = CreateGameGateway(serverData);
 
 					_onlineGameStopedMark = false;
 					OnlineGameSystemStarted?.Invoke();
@@ -995,6 +995,23 @@ namespace Lexplosion.Logic.Management
 			}
 		}
 
+		/// <summary>
+		/// Создает шлюз сетевой игры для запускаемого клиента.
+		/// </summary>
+		/// <param name="controlServer">Данные управляющего сервера сетевой игры.</param>
+		private OnlineGameGateway CreateGameGateway(ControlServerData controlServer)
+		{
+			return new OnlineGameGateway(
+				_activeAccount.UUID,
+				_activeAccount.SessionToken,
+				_services.WebService,
+				controlServer,
+				_generalSettings.NetworkDirectConnection,
+				_withDirectory.GetInstancePath(_instanceId) + "servers.dat",
+				_generalSettings.NetworkWorldsViaServersList
+			);
+		}
+
 		private void _RebotOnlineGame()
 		{
 			if (_gameGateway != null)
@@ -1006,7 +1023,7 @@ namespace Lexplosion.Logic.Management
 				catch { }
 
 				var serverData = new ControlServerData(LaunсherSettings.ServerIp, true);
-				_gameGateway = new OnlineGameGateway(_activeAccount.UUID, _activeAccount.SessionToken, _services.WebService, serverData, _generalSettings.NetworkDirectConnection);
+				_gameGateway = CreateGameGateway(serverData);
 				_gameGateway.Initialization(_classInstance._process.Id);
 			}
 		}

@@ -15,6 +15,17 @@ namespace Lexplosion.Logic.Network
 {
 	class OnlineGameGateway
 	{
+		/// <summary>
+		/// Периодичность отправки широковещательных пакетов.
+		/// </summary>
+		private const int BROADCAST_DELAY = 2000;
+
+		/// <summary>
+		/// Периодичность обновления списка серверов. Больше, чем у рассылки, потому что в этом режиме
+		/// запросы к серверу идут всю игровую сессию, а не только пока открыт экран мультиплеера.
+		/// </summary>
+		private const int SERVERS_LIST_DELAY = 10000;
+
 		private Thread ServerSimulatorThread;
 		private Thread ClientSimulatorThread;
 		private Thread InformingThread;
@@ -39,19 +50,35 @@ namespace Lexplosion.Logic.Network
 		private ControlServerData _controlServer;
 
 		/// <summary>
+		/// Отображает миры друзей через список серверов.
+		/// null, если миры отображаются широковещательной рассылкой.
+		/// </summary>
+		private readonly ServersListPublisher _serversListPublisher = null;
+
+		/// <summary>
 		/// Отвечает за тевевую игру.
 		/// </summary>
 		/// <param name="uuid">Айдишник игрока.</param>
 		/// <param name="sessionToken_">Его токен</param>
 		/// <param name="controlServer">Айпи сервера сетевой игры</param>
 		/// <param name="directConnection">Использовать ли прямо подключение в приоритете</param>
-		public OnlineGameGateway(string uuid, string sessionToken_, ToServer toServer, ControlServerData controlServer, bool directConnection)
+		/// <param name="serversDatPath">Путь до файла servers.dat запускаемого клиента</param>
+		/// <param name="worldsViaServersList">
+		/// Отображать ли миры друзей добавлением в список серверов вместо широковещательной рассылки
+		/// </param>
+		public OnlineGameGateway(string uuid, string sessionToken_, ToServer toServer, ControlServerData controlServer, bool directConnection, string serversDatPath, bool worldsViaServersList)
 		{
 			UUID = uuid;
 			sessionToken = sessionToken_;
 			_toServer = toServer;
 			_controlServer = controlServer;
 			_directConnection = directConnection;
+
+			if (worldsViaServersList && !string.IsNullOrWhiteSpace(serversDatPath))
+			{
+				_serversListPublisher = new ServersListPublisher(serversDatPath);
+			}
+
 			Runtime.DebugWrite("Create Gateway");
 		}
 
@@ -250,17 +277,29 @@ namespace Lexplosion.Logic.Network
 			Runtime.DebugWrite("Start server simulator");
 			ClientBridge bridge = new ClientBridge(UUID, sessionToken, _controlServer);
 
-			UdpClient client = new UdpClient();
-			client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-			client.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
+			UdpClient client = null;
 
-			SetMulticast(client.Client, IPAddress.Parse("224.0.2.60"));
+			// В режиме списка серверов мультикаст не нужен: миры отображаются через файл.
+			// Тем более этот режим и делался для тех, у кого рассылка не работает.
+			if (_serversListPublisher == null)
+			{
+				client = new UdpClient();
+				client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+				client.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
+
+				SetMulticast(client.Client, IPAddress.Parse("224.0.2.60"));
+			}
 
 			while (true)
 			{
-				if (Utils.ContainsUdpPort(pid, 4445))
+				// В режиме списка серверов ждать, пока майнкрафт займет порт 4445, нельзя: он занимает этот порт
+				// в момент открытия экрана мультиплеера, а servers.dat читается майнкрафтом тогда же.
+				// Значит записи должны попасть в файл заранее.
+				if (_serversListPublisher != null || Utils.ContainsUdpPort(pid, 4445))
 				{
-					Runtime.DebugWrite("Port 4445 is used by the process");
+					Runtime.DebugWrite(_serversListPublisher != null
+						? "Worlds are displayed via the servers list"
+						: "Port 4445 is used by the process");
 
 					var input = new Dictionary<string, string>
 					{
@@ -286,7 +325,8 @@ namespace Lexplosion.Logic.Network
 
 						Runtime.DebugWrite("Ports: " + string.Join(",", ports.Values));
 
-						//Отправляем пакеты сервера для отображения в локальных мирах
+						var worlds = new List<ServersListPublisher.WorldInfo>();
+
 						foreach (string uuid in ports.Keys)
 						{
 							string text = servers[uuid].login + " играет";
@@ -295,6 +335,14 @@ namespace Lexplosion.Logic.Network
 								text += " в " + servers[uuid].gameClientName;
 							}
 
+							if (_serversListPublisher != null)
+							{
+								//Собираем миры, чтобы добавить их в список серверов майнкрафта
+								worlds.Add(new ServersListPublisher.WorldInfo(text, ports[uuid]));
+								continue;
+							}
+
+							//Отправляем пакеты сервера для отображения в локальных мирах
 							byte[] _data = Encoding.UTF8.GetBytes("[MOTD]§3" + text + "[/MOTD][AD]" + ports[uuid] + "[/AD]");
 
 
@@ -308,14 +356,20 @@ namespace Lexplosion.Logic.Network
 								break;
 							}
 						}
+
+						_serversListPublisher?.Sync(worlds);
 					}
 					else
 					{
 						Runtime.DebugWrite($"servers == null: {servers == null}");
+
+						// Убираем свои записи из списка серверов, но только если сервер действительно ответил,
+						// что открытых миров нет. При ошибке запроса список лучше не трогать.
+						if (servers != null) _serversListPublisher?.Clear();
 					}
 				}
 
-				Thread.Sleep(2000);
+				Thread.Sleep(_serversListPublisher != null ? SERVERS_LIST_DELAY : BROADCAST_DELAY);
 			}
 		}
 
@@ -334,6 +388,10 @@ namespace Lexplosion.Logic.Network
 			try { ServerSimulatorThread.Abort(); } catch { }
 			try { ClientSimulatorThread.Abort(); } catch { }
 			try { if (InformingThread != null) InformingThread.Abort(); } catch { }
+
+			// Убираем миры друзей из списка серверов. Делается после остановки потоков,
+			// чтобы ServerSimulator не успел добавить их обратно.
+			try { _serversListPublisher?.Clear(); } catch { }
 
 			if (Server != null)
 			{

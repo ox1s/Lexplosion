@@ -77,6 +77,9 @@
     <s:String x:Key="DirectConnection">Direkt</s:String>
     <s:String x:Key="PriorityConnectionMethod">Bevorzugte Verbindungsmethode</s:String>
     <s:String x:Key="ViaRepeater">Über Repeater</s:String>
+    <s:String x:Key="WorldsDisplayMethod">Anzeigemethode für Welten</s:String>
+    <s:String x:Key="BroadcastWorldsDisplay">Broadcast</s:String>
+    <s:String x:Key="ServersListWorldsDisplay">Zur Serverliste hinzufügen</s:String>
     <s:String x:Key="ConnectedPlayers">Verbundene Spieler</s:String>
     <s:String x:Key="NoConnectedPlayers">Keine verbundenen Spieler</s:String>
     <s:String x:Key="ReloadMultiplayer">Multiplayer neu laden</s:String>

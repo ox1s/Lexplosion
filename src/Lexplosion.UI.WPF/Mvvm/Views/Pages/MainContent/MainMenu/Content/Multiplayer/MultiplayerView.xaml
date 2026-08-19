@@ -333,6 +333,32 @@
                                 <TextBlock FontSize="16" Text="{DynamicResource ViaRepeater}" />
                             </RadioButton>
                         </StackPanel>
+
+                        <TextBlock
+                            extensions:TextBlockExtensions.TextByKey="WorldsDisplayMethod"
+                            Margin="0,16,0,0"
+                            FontSize="16"
+                            FontWeight="Medium"
+                            Foreground="{DynamicResource PrimaryForegroundSolidColorBrush}" />
+
+                        <StackPanel Margin="0,16,0,0">
+                            <!--  broadcast  -->
+                            <RadioButton
+                                Margin="0,0,32,0"
+                                BorderBrush="{DynamicResource ActivitySolidColorBrush}"
+                                GroupName="WorldsDisplayType"
+                                IsChecked="{Binding Model.IsWorldsViaServersList, Converter={converters:NegativeBooleanValueConverter}}">
+                                <TextBlock FontSize="16" Text="{DynamicResource BroadcastWorldsDisplay}" />
+                            </RadioButton>
+
+                            <!--  via servers list  -->
+                            <RadioButton
+                                Margin="0,4,0,0"
+                                GroupName="WorldsDisplayType"
+                                IsChecked="{Binding Model.IsWorldsViaServersList}">
+                                <TextBlock FontSize="16" Text="{DynamicResource ServersListWorldsDisplay}" />
+                            </RadioButton>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 

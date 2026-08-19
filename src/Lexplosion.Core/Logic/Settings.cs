@@ -51,6 +51,11 @@ namespace Lexplosion.Logic
         /// Использовать ли в приоритете в сетевой игре прямое подключение.
         /// </summary>
         public bool NetworkDirectConnection = true;
+        /// <summary>
+        /// Отображать ли миры друзей добавлением в список серверов майнкрафта.
+        /// false - миры отображаются широковещательной рассылкой.
+        /// </summary>
+        public bool NetworkWorldsViaServersList = false;
         public string LanguageId = string.Empty;
         public string AccentColor = string.Empty;
         public string ThemeName = string.Empty;
@@ -138,6 +143,7 @@ namespace Lexplosion.Logic
             }
 
 			NetworkDirectConnection = settings.NetworkDirectConnection;
+			NetworkWorldsViaServersList = settings.NetworkWorldsViaServersList;
 			ItIsNotShit = settings.ItIsNotShit;
 			NavBarInLeft = settings.NavBarInLeft;
 			NwClientByDefault = settings.NwClientByDefault;
@@ -178,6 +184,7 @@ namespace Lexplosion.Logic
 				JVMArgs = "",
 				IsAutoUpdate = false,
 				NetworkDirectConnection = true,
+				NetworkWorldsViaServersList = false,
 				NwClientByDefault = null,
 				LanguageId = "ru-RU",
 				ThemeName = "DarkColorTheme",

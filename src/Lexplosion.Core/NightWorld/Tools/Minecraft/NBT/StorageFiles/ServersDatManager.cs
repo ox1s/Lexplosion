@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace NightWorld.Tools.Minecraft.NBT.StorageFiles
@@ -168,6 +169,65 @@ namespace NightWorld.Tools.Minecraft.NBT.StorageFiles
 			serversList.Add(server);
 		}
 
+		/// <summary>
+		/// Удаляет сервер из списка.
+		/// </summary>
+		/// <param name="name">Имя сервера.</param>
+		/// <param name="ip">Адрес сервера.</param>
+		/// <returns>true, если сервер был найден и удален.</returns>
+		public bool RemoveServer(string name, string ip)
+		{
+			return RemoveServers((server) => server.Name == name && server.Ip == ip) > 0;
+		}
+
+		/// <summary>
+		/// Удаляет из списка все сервера, подходящие под условие.
+		/// </summary>
+		/// <param name="condition">Условие, определяющее, нужно ли удалять сервер.</param>
+		/// <returns>Количество удаленных серверов.</returns>
+		public int RemoveServers(Func<ServerData, bool> condition)
+		{
+			if (condition == null) return 0;
+
+			// Сначала по распарсенному списку определяем, какие сервера нужно удалить.
+			var forRemoving = new HashSet<string>();
+			foreach (var server in _servers)
+			{
+				if (condition(server)) forRemoving.Add(ServerKey(server.Name, server.Ip));
+			}
+
+			if (forRemoving.Count == 0) return 0;
+
+			_servers.RemoveAll((server) => forRemoving.Contains(ServerKey(server.Name, server.Ip)));
+
+			// Удаляем соответствующие записи из nbt структуры.
+			// Именно ее правка, а не пересборка списка с нуля, нужна для того,
+			// чтобы у остальных серверов не потерялись теги, о которых этот класс не знает.
+			var serversList = (NbtList)_data["servers"];
+			int removedCount = 0;
+
+			// Идем с конца, чтобы удаление не сбивало индексы еще не проверенных элементов.
+			for (int i = serversList.Count - 1; i >= 0; i--)
+			{
+				if (!(serversList[i] is NbtCompound item)) continue;
+				if (!item.ContainsKey("name") || !item.ContainsKey("ip")) continue;
+				if (!(item["name"] is NbtString name) || !(item["ip"] is NbtString ip)) continue;
+
+				if (!forRemoving.Contains(ServerKey(name.Content, ip.Content))) continue;
+
+				serversList.RemoveAt(i);
+				removedCount++;
+			}
+
+			return removedCount;
+		}
+
+		private static string ServerKey(string name, string ip)
+		{
+			// \n не может встретиться ни в имени, ни в адресе, поэтому подходит в качестве разделителя.
+			return name + "\n" + ip;
+		}
+
 		public byte[] CompileData()
 		{
 			NbtEncoder encoder = new NbtEncoder();
@@ -184,7 +244,21 @@ namespace NightWorld.Tools.Minecraft.NBT.StorageFiles
 					Directory.CreateDirectory(dir);
 				}
 
-				File.WriteAllBytes(_filePath, CompileData());
+				// Пишем через временный файл, чтобы прерывание записи не оставило вместо servers.dat обрубок.
+				// Раньше файл писался один раз при настройке клиента, а теперь еще и во время игры,
+				// поэтому попасть на прерывание записи стало реально.
+				string tempFile = _filePath + ".tmp";
+				File.WriteAllBytes(tempFile, CompileData());
+
+				if (File.Exists(_filePath))
+				{
+					File.Replace(tempFile, _filePath, null);
+				}
+				else
+				{
+					File.Move(tempFile, _filePath);
+				}
+
 				return true;
 			}
 			catch
